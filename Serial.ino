@@ -48,6 +48,7 @@ static uint8_t inBuf[INBUF_SIZE][UART_NUMBER];
 #define MSP_BOXNAMES             116   //out message         the aux switch names
 #define MSP_PIDNAMES             117   //out message         the PID names
 #define MSP_WP                   118   //out message         get a WP, WP# is in the payload, returns (WP#, lat, lon, alt, flags) WP#0-home, WP#16-poshold
+#define MSP_HEADING              125   //out message         headings and MAG configuration
 
 #define MSP_SET_RAW_RC           200   //in message          8 rc chan
 #define MSP_SET_RAW_GPS          201   //in message          fix, numsat, lat, lon, alt, speed
@@ -327,6 +328,14 @@ void evaluateCommand() {
      headSerialReply(8);
      for(uint8_t i=0;i<2;i++) serialize16(angle[i]);
      serialize16(heading);
+     serialize16(headFreeModeHold);
+     break;
+   case MSP_HEADING:
+     headSerialReply(7);
+     /* indicate whether we are using mag stabilization or headfree mode */
+     serialize8( f.MAG_MODE<<0 | f.HEADFREE_MODE<<1 );
+     serialize16(heading);
+     serialize16(magHold);
      serialize16(headFreeModeHold);
      break;
    case MSP_ALTITUDE:
