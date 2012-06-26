@@ -1,4 +1,5 @@
 #include <avr/eeprom.h>
+#include <string.h>
 
 
 uint8_t calculate_sum(uint8_t *cb , uint8_t siz) {
@@ -109,7 +110,7 @@ void LoadDefaults() {
   conf.yawRate = 0;
   conf.dynThrPID = 0;
   conf.thrMid8 = 50; conf.thrExpo8 = 0;
-  for(uint8_t i=0;i<CHECKBOXITEMS;i++) {conf.activate[i] = 0;}
+  memset(conf.activate, 0, sizeof(conf.activate));
   conf.angleTrim[0] = 0; conf.angleTrim[1] = 0;
   conf.powerTrigger1 = 0;
   #ifdef FLYING_WING

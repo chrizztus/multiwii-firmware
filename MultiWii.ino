@@ -28,6 +28,7 @@ enum rc {
   AUX3,
   AUX4
 };
+#define AUXN(n)    ((AUX1)-1+(n))
 
 enum pid {
   PIDROLL,
@@ -259,10 +260,23 @@ static uint16_t intPowerMeterSum, intPowerTrigger1;
 #define THR_CE  (3<<(2*THROTTLE))
 #define THR_HI  (2<<(2*THROTTLE))
 
+#ifndef AUX_CHANNELS
+  #define AUX_CHANNELS 4
+#endif
+
+#ifndef AUX_THRESHOLDS
+  #define AUX_THRESHOLDS {1300, 1700}
+#endif
+
+static const uint16_t aux_threshold[] = AUX_THRESHOLDS;
+#define AUX_STEPS (1+( sizeof(aux_threshold) / sizeof(*aux_threshold) ))
+
 static int16_t failsafeEvents = 0;
 volatile int16_t failsafeCnt = 0;
 
-static int16_t rcData[RC_CHANS];   // interval [1000;2000]
+#define MAX(x,y) ((x)>(y) ? (x) : (y))
+#define RCDATA_SIZE MAX((RC_CHANS), (4+(AUX_CHANNELS)))
+static int16_t rcData[RCDATA_SIZE]; // interval [1000;2000]
 static int16_t rcCommand[4];       // interval [1000;2000] for THROTTLE and [-500;+500] for ROLL/PITCH/YAW 
 static int16_t lookupPitchRollRC[6];// lookup table for expo & RC rate PITCH+ROLL
 static int16_t lookupThrottleRC[11];// lookup table for expo & mid THROTTLE
@@ -316,7 +330,8 @@ static struct {
   uint8_t thrMid8;
   uint8_t thrExpo8;
   int16_t angleTrim[2];
-  uint16_t activate[CHECKBOXITEMS];
+  /* we need AUX_STEPS bits per AUX channel per item */
+  uint8_t activate[ (AUX_STEPS*AUX_CHANNELS*CHECKBOXITEMS+7)/8 ];
   uint8_t powerTrigger1;
   #ifdef FLYING_WING
     uint16_t wing_left_mid;
@@ -353,6 +368,24 @@ static struct {
   uint8_t  checksum;      // MUST BE ON LAST POSITION OF CONF STRUCTURE ! 
 } conf;
 
+uint8_t activated(uint8_t item, uint8_t channel, uint8_t state) {
+  // Check whether a specific checkbox item is activated
+  uint16_t bnum = item*(AUX_CHANNELS*AUX_STEPS) + channel*AUX_STEPS + state;
+  uint8_t *field = &conf.activate[ bnum/8 ];
+  return (*field & 1<<(bnum%8));
+}
+
+uint8_t can_be_activated(uint8_t item) {
+  // Check whether a specific checkbox item can actually ever be activated
+  for (uint8_t i = 0; i<AUX_CHANNELS; i++) {
+    for (uint8_t j = 0; j<AUX_STEPS; j++) {
+      if (activated(item, i, j)) {
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
 
 // **********************
 // GPS common variables
@@ -751,6 +784,24 @@ void loop () {
     #endif
     // end of failsafe routine - next change is made with RcOptions setting
 
+    // process the state of AUX channels and check for activated checkbox items
+    memset(rcOptions, 0, sizeof(rcOptions));
+    for(uint8_t c=0;c<AUX_CHANNELS;c++) {
+      uint16_t val = rcData[AUX1+c];
+      uint8_t state;
+      // detect the state our channel is in
+      for (state = (AUX_STEPS-1); state>0; state--) {
+        if (aux_threshold[state-1] < val) break;
+      }
+      // does this state enable any checkbox items?
+      for(i=0;i<CHECKBOXITEMS;i++) {
+        if (activated(i, c, state)) {
+          rcOptions[i] = 1;
+          continue;
+        }
+      }
+    }
+
 // ------------------ STICKS COMMAND HANDLER --------------------
 // checking sticks positions
     uint8_t stTmp = 0;
@@ -768,7 +819,7 @@ void loop () {
     if (rcData[THROTTLE] <= MINCHECK) {            // THROTTLE at minimum
       errorGyroI[ROLL] = 0; errorGyroI[PITCH] = 0; errorGyroI[YAW] = 0;
       errorAngleI[ROLL] = 0; errorAngleI[PITCH] = 0;
-      if (conf.activate[BOXARM] > 0) {             // Arming/Disarming via ARM BOX
+      if (can_be_activated(BOXARM)) {             // Arming/Disarming via ARM BOX
         if ( rcOptions[BOXARM] && f.OK_TO_ARM ) go_arm(); else if (f.ARMED) f.ARMED = 0;
       }
     }
@@ -885,12 +936,6 @@ void loop () {
         AccInflightCalibrationSavetoEEProm = 1;
       }
     #endif
-
-    uint16_t auxState = 0;
-    for(i=0;i<4;i++)
-      auxState |= (rcData[AUX1+i]<1300)<<(3*i) | (1300<rcData[AUX1+i] && rcData[AUX1+i]<1700)<<(3*i+1) | (rcData[AUX1+i]>1700)<<(3*i+2);
-    for(i=0;i<CHECKBOXITEMS;i++)
-      rcOptions[i] = (auxState & conf.activate[i])>0;
 
     // note: if FAILSAFE is disable, failsafeCnt > 5*FAILSAFE_DELAY is always false
     #if ACC

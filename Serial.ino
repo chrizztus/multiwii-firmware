@@ -56,6 +56,9 @@ const uint32_t PROGMEM capability = 0+BIND_CAPABLE;
 #define MSP_BOXNAMES             116   //out message         the aux switch names
 #define MSP_PIDNAMES             117   //out message         the PID names
 #define MSP_WP                   118   //out message         get a WP, WP# is in the payload, returns (WP#, lat, lon, alt, flags) WP#0-home, WP#16-poshold
+#define MSP_HEADING              125   //out message         headings and MAG configuration
+#define MSP_AUX_COUNT            119   //out message         number of AUX channels
+#define MSP_AUX                  120   //out message         configuration of AUX channels
 
 #define MSP_SET_RAW_RC           200   //in message          8 rc chan
 #define MSP_SET_RAW_GPS          201   //in message          fix, numsat, lat, lon, alt, speed
@@ -68,6 +71,8 @@ const uint32_t PROGMEM capability = 0+BIND_CAPABLE;
 #define MSP_RESET_CONF           208   //in message          no param
 #define MSP_SET_WP               209   //in message          sets a given WP (WP#,lat, lon, alt, flags)
 #define MSP_SELECT_SETTING       210   //in message          Select Setting Number (0-2)
+
+#define MSP_SET_AUX              230   //in message          set configuration of AUX channels
 
 #define MSP_SPEK_BIND            240   //in message          no param
 
@@ -224,9 +229,9 @@ void evaluateCommand() {
      }
      headSerialReply(0);
      break;
-   case MSP_SET_BOX:
-     for(uint8_t i=0;i<CHECKBOXITEMS;i++) {
-       conf.activate[i]=read16();
+   case MSP_SET_AUX:
+     for(uint8_t i=0;i<sizeof(conf.activate);i++) {
+       conf.activate[i]=read8();
      }
      headSerialReply(0);
      break;
@@ -379,10 +384,10 @@ void evaluateCommand() {
        serialize8(conf.D8[i]);
      }
      break;
-   case MSP_BOX:
-     headSerialReply(2*CHECKBOXITEMS);
-     for(uint8_t i=0;i<CHECKBOXITEMS;i++) {
-       serialize16(conf.activate[i]);
+   case MSP_AUX:
+     headSerialReply(sizeof(conf.activate));
+     for(uint8_t i=0;i<sizeof(conf.activate);i++) {
+       serialize8(conf.activate[i]);
      }
      break;
    case MSP_BOXNAMES:
@@ -437,6 +442,11 @@ void evaluateCommand() {
      headSerialReply(0);
      break;
    #endif
+   case MSP_AUX_COUNT:
+     headSerialReply(2);
+     serialize8(AUX_CHANNELS);
+     serialize8(AUX_STEPS);
+     break;
    case MSP_RESET_CONF:
      if(!f.ARMED) LoadDefaults();
      headSerialReply(0);
