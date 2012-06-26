@@ -29,6 +29,7 @@ enum rc {
   AUX3,
   AUX4
 };
+#define AUXN(n)    ((AUX1)-1+(n))
 
 enum pid {
   PIDROLL,
@@ -253,10 +254,16 @@ static uint16_t intPowerMeterSum, intPowerTrigger1;
 #define MINCHECK 1100
 #define MAXCHECK 1900
 
+#ifndef AUX_CHANNELS
+  #define AUX_CHANNELS 4
+#endif
+
 static int16_t failsafeEvents = 0;
 volatile int16_t failsafeCnt = 0;
 
-static int16_t rcData[RC_CHANS];   // interval [1000;2000]
+#define MAX(x,y) ((x)>(y) ? (x) : (y))
+#define RCDATA_SIZE MAX((RC_CHANS), (4+(AUX_CHANNELS)))
+static int16_t rcData[RCDATA_SIZE]; // interval [1000;2000]
 static int16_t rcCommand[4];       // interval [1000;2000] for THROTTLE and [-500;+500] for ROLL/PITCH/YAW 
 static int16_t lookupPitchRollRC[6];// lookup table for expo & RC rate PITCH+ROLL
 static int16_t lookupThrottleRC[11];// lookup table for expo & mid THROTTLE
@@ -307,7 +314,8 @@ static struct {
   int16_t accZero[3];
   int16_t magZero[3];
   int16_t angleTrim[2];
-  uint16_t activate[CHECKBOXITEMS];
+  /* we need 3 bits per AUX channel per item */
+  uint8_t activate[ (3*AUX_CHANNELS*CHECKBOXITEMS+7)/8 ];
   uint8_t powerTrigger1;
   #ifdef FLYING_WING
     uint16_t wing_left_mid;
@@ -344,6 +352,22 @@ static struct {
   #endif
 } conf;
 
+uint8_t activated(uint8_t item, uint8_t channel, uint8_t state) {
+  uint16_t bnum = item*(AUX_CHANNELS*3) + channel*3 + state;
+  uint8_t *field = &conf.activate[ bnum/8 ];
+  return (*field & 1<<(bnum%8));
+}
+
+uint8_t can_be_activated(uint8_t item) {
+  for (uint8_t i = 0; i<AUX_CHANNELS; i++) {
+    for (uint8_t j = 0; j<3; j++) {
+      if (activated(item, i, j)) {
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
 
 // **********************
 // GPS common variables
@@ -823,7 +847,7 @@ void loop () {
           }
        } 
      #endif
-      else if (conf.activate[BOXARM] > 0) {
+      else if (can_be_activated(BOXARM)) {
         if ( rcOptions[BOXARM] && f.OK_TO_ARM
         #if defined(FAILSAFE)
           && failsafeCnt <= 1
@@ -920,11 +944,24 @@ void loop () {
       }
     #endif
 
-    uint16_t auxState = 0;
-    for(i=0;i<4;i++)
-      auxState |= (rcData[AUX1+i]<1300)<<(3*i) | (1300<rcData[AUX1+i] && rcData[AUX1+i]<1700)<<(3*i+1) | (rcData[AUX1+i]>1700)<<(3*i+2);
-    for(i=0;i<CHECKBOXITEMS;i++)
-      rcOptions[i] = (auxState & conf.activate[i])>0;
+    memset(rcOptions, 0, sizeof(rcOptions));
+    for(uint8_t c=0;c<AUX_CHANNELS;c++) {
+      uint16_t val = rcData[AUX1+c];
+      uint8_t state;
+      if (val < 1300) {
+        state = 0;
+      } else if (val > 1700) {
+        state = 2;
+      } else {
+        state = 1;
+      }
+      for(i=0;i<CHECKBOXITEMS;i++) {
+        if (activated(i, c, state)) {
+          rcOptions[i] = 1;
+          continue;
+        }
+      }
+    }
 
     #ifdef DATENSCHLAG_CHANNEL
     /* apply flight assistance settings from Datenschlag data link */
