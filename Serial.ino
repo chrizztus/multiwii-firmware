@@ -415,8 +415,9 @@ void evaluateCommand() {
 #endif
 
    case MSP_AUX_COUNT:
-     headSerialReply(1);
+     headSerialReply(2);
      serialize8(AUX_CHANNELS);
+     serialize8(AUX_STEPS);
      break;
    case MSP_RESET_CONF:
      if(!f.ARMED) {
