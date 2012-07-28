@@ -35,23 +35,27 @@ July  2012     V2.1
 #define PIDMAG     8
 #define PIDVEL     9 // not used currently
 
-#define BOXACC       0
-#define BOXBARO      1
-#define BOXMAG       2
-#define BOXCAMSTAB   3
-#define BOXCAMTRIG   4
-#define BOXARM       5
-#define BOXGPSHOME   6
-#define BOXGPSHOLD   7
-#define BOXPASSTHRU  8
-#define BOXHEADFREE  9
-#define BOXBEEPERON  10
-#define BOXLEDMAX    11 // we want maximum illumination
-#define BOXLLIGHTS   12 // enable landing lights at any altitude
-#define BOXHEADADJ   13 // acquire heading for HEADFREE mode
+enum aux_sys {
+  BOXACC,
+  BOXBARO,
+  BOXMAG,
+  BOXCAMSTAB,
+  BOXCAMTRIG,
+  BOXARM,
+  BOXGPSHOME,
+  BOXGPSHOLD,
+  BOXPASSTHRU,
+  BOXHEADFREE,
+  BOXBEEPERON,
+  BOXLEDMAX, // we want maximum illumination
+  BOXLLIGHTS, // enable landing lights at any altitude
+  BOXHEADADJ, // acquire heading for HEADFREE mode
+
+  BOX_CNT
+};
 
 #define PIDITEMS 10
-#define CHECKBOXITEMS 14
+#define CHECKBOXITEMS BOX_CNT
 
 const char boxnames[] PROGMEM = // names for dynamic generation of config GUI
   "ACC;"
