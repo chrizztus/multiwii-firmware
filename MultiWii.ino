@@ -18,24 +18,32 @@ July  2012     V2.1
 
 
 /*********** RC alias *****************/
-#define ROLL       0
-#define PITCH      1
-#define YAW        2
-#define THROTTLE   3
-#define AUX1       4
-#define AUX2       5
-#define AUX3       6
-#define AUX4       7
+enum rc {
+  ROLL,
+  PITCH,
+  YAW,
+  THROTTLE,
+  AUX1,
+  AUX2,
+  AUX3,
+  AUX4
+};
 
-#define PIDALT     3
-#define PIDPOS     4
-#define PIDPOSR    5
-#define PIDNAVR    6
-#define PIDLEVEL   7
-#define PIDMAG     8
-#define PIDVEL     9 // not used currently
+enum pid {
+  PIDROLL,
+  PIDPITCH,
+  PIDYAW,
+  PIDALT,
+  PIDPOS,
+  PIDPOSR,
+  PIDNAVR,
+  PIDLEVEL,
+  PIDMAG,
+  PIDVEL,     // not used currently
+  PIDITEMS
+};
 
-enum aux_sys {
+enum box {
   BOXACC,
   BOXBARO,
   BOXMAG,
@@ -50,12 +58,8 @@ enum aux_sys {
   BOXLEDMAX, // we want maximum illumination
   BOXLLIGHTS, // enable landing lights at any altitude
   BOXHEADADJ, // acquire heading for HEADFREE mode
-
-  BOX_CNT
+  CHECKBOXITEMS
 };
-
-#define PIDITEMS 10
-#define CHECKBOXITEMS BOX_CNT
 
 const char boxnames[] PROGMEM = // names for dynamic generation of config GUI
   "ACC;"
