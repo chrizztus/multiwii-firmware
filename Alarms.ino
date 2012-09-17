@@ -151,7 +151,8 @@
       BUZZERPIN_OFF;
     }  
   }  
-  
+#else
+  uint8_t isBuzzerON() { return 0; }
 #endif  //end of buzzer define
 
 /********************************************************************/
