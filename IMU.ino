@@ -95,21 +95,18 @@ void computeIMU () {
 /* Set the Low Pass Filter factor for Magnetometer */
 /* Increasing this value would reduce Magnetometer noise (not visible in GUI), but would increase Magnetometer lag time*/
 /* Comment this if  you do not want filter at all.*/
-/* Default WMC value: n/a*/
 #ifndef MG_LPF_FACTOR
-//#define MG_LPF_FACTOR 4
+  //#define MG_LPF_FACTOR 4
 #endif
 
 /* Set the Gyro Weight for Gyro/Acc complementary filter */
 /* Increasing this value would reduce and delay Acc influence on the output of the filter*/
-/* Default WMC value: 300*/
 #ifndef GYR_CMPF_FACTOR
   #define GYR_CMPF_FACTOR 400.0f
 #endif
 
 /* Set the Gyro Weight for Gyro/Magnetometer complementary filter */
 /* Increasing this value would reduce and delay Magnetometer influence on the output of the filter*/
-/* Default WMC value: n/a*/
 #ifndef GYR_CMPFM_FACTOR
   #define GYR_CMPFM_FACTOR 200.0f
 #endif
@@ -269,8 +266,8 @@ void getEstimatedAltitude(){
   int32_t temp32;
   int16_t last;
 
-  if (currentTime < deadLine) return;
-  deadLine = currentTime + UPDATE_INTERVAL; 
+  if (abs(currentTime - deadLine) < UPDATE_INTERVAL) return;
+  deadLine = currentTime; 
 
   //**** Alt. Set Point stabilization PID ****
   //calculate speed for D calculation
@@ -285,23 +282,26 @@ void getEstimatedAltitude(){
   BaroHistIdx++;
   if (BaroHistIdx == BARO_TAB_SIZE) BaroHistIdx = 0;
 
-  BaroPID = 0;
-  //D
-  temp32 = conf.D8[PIDALT]*(BaroHigh - BaroLow) / 40;
-  BaroPID-=temp32;
-
   EstAlt = BaroHigh*10/(BARO_TAB_SIZE/2);
-  
-  temp32 = AltHold - EstAlt;
-  if (abs(temp32) < 10 && abs(BaroPID) < 10) BaroPID = 0;  //remove small D parametr to reduce noise near zero position
-  
-  //P
-  BaroPID += conf.P8[PIDALT]*constrain(temp32,(-2)*conf.P8[PIDALT],2*conf.P8[PIDALT])/100;   
-  BaroPID = constrain(BaroPID,-150,+150); //sum of P and D should be in range 150
 
-  //I
-  errorAltitudeI += temp32*conf.I8[PIDALT]/50;
-  errorAltitudeI = constrain(errorAltitudeI,-30000,30000);
-  temp32 = errorAltitudeI / 500; //I in range +/-60
-  BaroPID+=temp32;
+  // everything following is used for altitude hold only but not for estimating current altitude
+  #ifndef SUPPRESS_BARO_ALTHOLD
+    BaroPID = 0;
+    //D
+    temp32 = conf.D8[PIDALT]*(BaroHigh - BaroLow) / 40;
+    BaroPID-=temp32;
+
+    temp32 = AltHold - EstAlt;
+    if (abs(temp32) < 10 && abs(BaroPID) < 10) BaroPID = 0;  //remove small D parametr to reduce noise near zero position
+
+    //P
+    BaroPID += conf.P8[PIDALT]*constrain(temp32,(-2)*conf.P8[PIDALT],2*conf.P8[PIDALT])/100;
+    BaroPID = constrain(BaroPID,-150,+150); //sum of P and D should be in range 150
+  
+    //I
+    errorAltitudeI += temp32*conf.I8[PIDALT]/50;
+    errorAltitudeI = constrain(errorAltitudeI,-30000,30000);
+    temp32 = errorAltitudeI / 500; //I in range +/-60
+    BaroPID+=temp32;
+  #endif
 }
