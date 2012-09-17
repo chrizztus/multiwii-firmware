@@ -596,6 +596,9 @@
     /* use custom number of AUX steps or thresholds */
     //#define AUX_THRESHOLDS {1300, 1700}
 
+    /* provide legacy interface to AUX channel configuration (only suitable for 4*3 AUX channels) */
+    //#define AUX_SERIAL_COMPAT
+
   /**************************************************************************************/
   /***********************                  GPS                **************************/
   /**************************************************************************************/

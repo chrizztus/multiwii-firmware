@@ -228,7 +228,7 @@ void evaluateCommand() {
      headSerialReply(0);
      break;
 
-   #if (AUX_CHANNELS == 4) // we cannot check for AUX_STEPS == 3 here :(
+   #if (AUX_CHANNELS == 4) && defined(AUX_SERIAL_COMPAT) // we cannot check for AUX_STEPS == 3 here :(
    // traditional way of setting box items, superseeded by MSP_SET_AUX
    case MSP_SET_BOX:
      // we cannot handle non-traditional numbers here
@@ -405,7 +405,7 @@ void evaluateCommand() {
      }
      break;
 
-   #if (AUX_CHANNELS == 4) // we cannot check for AUX_STEPS == 3 here :(
+   #if (AUX_CHANNELS == 4) && defined(AUX_SERIAL_COMPAT) // we cannot check for AUX_STEPS == 3 here :(
    case MSP_BOX:
      // we cannot handle non-traditional numbers here
      if (AUX_CHANNELS == 4 && AUX_STEPS == 3) {
