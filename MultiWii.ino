@@ -77,6 +77,7 @@ enum box {
   #endif
   #if defined(LED_FLASHER)
     BOXLEDMAX, // we want maximum illumination
+    BOXLEDLOW, // low/no lights
   #endif
   #if defined(LANDING_LIGHTS_DDR)
     BOXLLIGHTS, // enable landing lights at any altitude
@@ -120,6 +121,7 @@ const char boxnames[] PROGMEM = // names for dynamic generation of config GUI
   #endif
   #if defined(LED_FLASHER)
     "LEDMAX;"
+    "LEDLOW;"
   #endif
   #if defined(LANDING_LIGHTS_DDR)
     "LLIGHTS;"
