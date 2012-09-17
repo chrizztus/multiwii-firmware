@@ -113,11 +113,19 @@ static void datenschlag_apply_setting(uint8_t bit, uint8_t *var) {
 }
 
 void datenschlag_apply_fa_settings() {
-	datenschlag_apply_setting(DATENSPRUNG_FA_ACC, &rcOptions[BOXACC]);
+#if ACC
+	datenschlag_apply_setting(DATENSPRUNG_FA_ACC, &rcOptions[BOXANGLE]);
+#endif
+#if BARO
 	datenschlag_apply_setting(DATENSPRUNG_FA_BARO, &rcOptions[BOXBARO]);
+#endif
+#if MAG
 	datenschlag_apply_setting(DATENSPRUNG_FA_MAG, &rcOptions[BOXMAG]);
 	datenschlag_apply_setting(DATENSPRUNG_FA_HEADFREE, &rcOptions[BOXHEADFREE]);
+#endif
+#if GPS
 	datenschlag_apply_setting(DATENSPRUNG_FA_GPSHOLD, &rcOptions[BOXGPSHOLD]);
+#endif
 }
 
 static struct {
