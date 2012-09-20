@@ -281,7 +281,10 @@ void evaluateCommand() {
                  #if defined(LANDING_LIGHTS_DDR)
                    rcOptions[BOXLLIGHTS]<<BOXLLIGHTS |
                  #endif
-                 f.ARMED<<BOXARM);
+                 #if defined(ALLOW_ARM_DISARM_VIA_AUX)
+                   f.ARMED<<BOXARM |
+                 #endif
+                 0);
      break;
    case MSP_RAW_IMU:
      headSerialReply(18);

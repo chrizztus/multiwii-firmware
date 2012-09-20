@@ -61,7 +61,9 @@ enum box {
   #if defined(CAMTRIG)
     BOXCAMTRIG,
   #endif
+  #if defined(ALLOW_ARM_DISARM_VIA_AUX)
   BOXARM,
+  #endif
   #if GPS
     BOXGPSHOME,
     BOXGPSHOLD,
@@ -105,7 +107,9 @@ const char boxnames[] PROGMEM = // names for dynamic generation of config GUI
   #if defined(CAMTRIG)
     "CAMTRIG;"
   #endif
+  #if defined(ALLOW_ARM_DISARM_VIA_AUX)
   "ARM;"
+  #endif
   #if GPS
     "GPS HOME;"
     "GPS HOLD;"
@@ -216,6 +220,9 @@ static int16_t  annex650_overrun_count = 0;
 //Automatic ACC Offset Calibration
 // **********************
 #if defined(INFLIGHT_ACC_CALIBRATION)
+  #if !defined(ALLOW_ARM_DISARM_VIA_AUX)
+    #error "INFLIGHT_ACC_CALIBRATION requires ALLOW_ARM_DISARM_VIA_AUX"
+  #endif
   static uint16_t InflightcalibratingA = 0;
   static int16_t AccInflightCalibrationArmed;
   static uint16_t AccInflightCalibrationMeasurementDone = 0;
@@ -823,6 +830,7 @@ void loop () {
           }
        } 
      #endif
+      #ifdef ALLOW_ARM_DISARM_VIA_AUX
       else if (conf.activate[BOXARM] > 0) {
         if ( rcOptions[BOXARM] && f.OK_TO_ARM
         #if defined(FAILSAFE)
@@ -833,26 +841,30 @@ void loop () {
           headFreeModeHold = heading;
         } else if (f.ARMED) f.ARMED = 0;
         rcDelayCommand = 0;
+      }
+      #endif
       #ifdef ALLOW_ARM_DISARM_VIA_TX_YAW
-      } else if ( (rcData[YAW] < MINCHECK )  && f.ARMED) {
+      else if ( (rcData[YAW] < MINCHECK )  && f.ARMED) {
         if (rcDelayCommand == 20) f.ARMED = 0; // rcDelayCommand = 20 => 20x20ms = 0.4s = time to wait for a specific RC command to be acknowledged
       } else if ( (rcData[YAW] > MAXCHECK ) && rcData[PITCH] < MAXCHECK && !f.ARMED && calibratingG == 0 && f.ACC_CALIBRATED) {
         if (rcDelayCommand == 20) {
           f.ARMED = 1;
           headFreeModeHold = heading;
         }
+      }
       #endif
       #ifdef ALLOW_ARM_DISARM_VIA_TX_ROLL
-      } else if ( (rcData[ROLL] < MINCHECK)  && f.ARMED) {
+      else if ( (rcData[ROLL] < MINCHECK)  && f.ARMED) {
         if (rcDelayCommand == 20) f.ARMED = 0; // rcDelayCommand = 20 => 20x20ms = 0.4s = time to wait for a specific RC command to be acknowledged
       } else if ( (rcData[ROLL] > MAXCHECK) && rcData[PITCH] < MAXCHECK && !f.ARMED && calibratingG == 0 && f.ACC_CALIBRATED) {
         if (rcDelayCommand == 20) {
           f.ARMED = 1;
           headFreeModeHold = heading;
         }
+      }
       #endif
       #ifdef LCD_TELEMETRY_AUTO
-      } else if (rcData[ROLL] < MINCHECK && rcData[PITCH] > MAXCHECK && !f.ARMED) {
+      else if (rcData[ROLL] < MINCHECK && rcData[PITCH] > MAXCHECK && !f.ARMED) {
         if (rcDelayCommand == 20) {
            if (telemetry_auto) {
               telemetry_auto = 0;
@@ -860,15 +872,17 @@ void loop () {
            } else
               telemetry_auto = 1;
         }
+      }
       #endif
       #ifdef LCD_TELEMETRY_STEP
-      } else if (rcData[ROLL] > MAXCHECK && rcData[PITCH] > MAXCHECK && !f.ARMED) {
+      else if (rcData[ROLL] > MAXCHECK && rcData[PITCH] > MAXCHECK && !f.ARMED) {
         if (rcDelayCommand == 20) {
           telemetry = telemetryStepSequence[++telemetryStepIndex % strlen(telemetryStepSequence)];
           LCDclear(); // make sure to clear away remnants
         }
+      }
       #endif
-      } else
+      else
         rcDelayCommand = 0;
     } else if (rcData[THROTTLE] > MAXCHECK && !f.ARMED) {
       if (rcData[YAW] < MINCHECK && rcData[PITCH] < MINCHECK) {        // throttle=max, yaw=left, pitch=min
@@ -953,7 +967,13 @@ void loop () {
       }
     #endif
 
-    if (rcOptions[BOXARM] == 0) f.OK_TO_ARM = 1;
+    #if ALLOW_ARM_DISARM_VIA_AUX
+    if (rcOptions[BOXARM] == 0)
+    #endif
+    {
+      f.OK_TO_ARM = 1;
+    }
+
     #if !defined(GPS_LED_INDICATOR)
       if (f.ANGLE_MODE || f.HORIZON_MODE) {STABLEPIN_ON;} else {STABLEPIN_OFF;}
     #endif
