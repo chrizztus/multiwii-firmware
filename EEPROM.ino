@@ -1,11 +1,44 @@
 #include <avr/eeprom.h>
 
 #define EEPROM_CONF_VERSION 164
+#define EEPROM_BASE_ADDR 0
+
+uint8_t validEEPROM() {
+  struct __eeprom_conf temp;
+
+  eeprom_read_block((void*)&temp, (void*)EEPROM_BASE_ADDR, sizeof(temp));
+
+  /* check version number */
+  if (EEPROM_CONF_VERSION != temp.version) {
+    return 0;
+  }
+   /* check size and magic numbers */
+  if (temp.size != sizeof(temp) || temp.magic_be != 0xBE || temp.magic_ef != 0xEF) {
+    return 0;
+  }
+
+  /* verify integrity of temporary copy */
+  uint8_t chk = 0;
+  for (uint8_t *p = (uint8_t *)&temp; p < ((uint8_t *)&temp + sizeof(temp)); p++) {
+    chk ^= *p;
+  }
+  if (chk != 0) {
+    /* checksum failed */
+    return 0;
+  }
+  /* looks good, let's roll! */
+  return 1;
+}
 
 void readEEPROM() {
   uint8_t i;
 
-  eeprom_read_block((void*)&conf, (void*)0, sizeof(conf));
+  /* do not load values if EEPROM content is invalid */
+  if (! validEEPROM()) {
+    return;
+  }
+
+  eeprom_read_block((void*)&conf, (void*)EEPROM_BASE_ADDR, sizeof(conf));
   for(i=0;i<6;i++) {
     lookupPitchRollRC[i] = (2500+conf.rcExpo8*(i*i-25))*i*(int32_t)conf.rcRate8/2500;
   }
@@ -48,11 +81,23 @@ void readEEPROM() {
   #endif
 }
 
-void writeParams(uint8_t b) {
-  conf.checkNewConf = EEPROM_CONF_VERSION; // make sure we write the current version into eeprom
-  eeprom_write_block((const void*)&conf, (void*)0, sizeof(conf));
+void writeParams(uint8_t blink) {
+  conf.version = EEPROM_CONF_VERSION; // make sure we write the current version into eeprom
+  /* set size and magic numbers */
+  conf.size = sizeof(conf);
+  conf.magic_be = 0xBE;
+  conf.magic_ef = 0xEF;
+  /* recalculate checksum before writing */
+  conf.chk = 0;
+  uint8_t chk = 0;
+  for (uint8_t *p = (uint8_t *)&conf; p < ((uint8_t *)&conf + sizeof(conf)); p++) {
+    chk ^= *p;
+  }
+  conf.chk = chk;
+
+  eeprom_write_block((const void*)&conf, (void*)EEPROM_BASE_ADDR, sizeof(conf));
   readEEPROM();
-  if (b == 1){ 
+  if (blink){
     blinkLED(15,20,1);
     #if defined(BUZZER)
       beep_confirmation = 1;
@@ -62,7 +107,14 @@ void writeParams(uint8_t b) {
 }
 
 void checkFirstTime() {
-  if (EEPROM_CONF_VERSION == conf.checkNewConf) return;
+  /* check the EEPROM integrity before resetting values */
+  if (! validEEPROM()) {
+    resetConf();
+  }
+}
+
+void resetConf() {
+  memset(&conf, 0, sizeof(conf));
   conf.P8[ROLL]  = 40;  conf.I8[ROLL] = 30; conf.D8[ROLL]  = 23;
   conf.P8[PITCH] = 40; conf.I8[PITCH] = 30; conf.D8[PITCH] = 23;
   conf.P8[YAW]   = 85;  conf.I8[YAW]  = 45;  conf.D8[YAW]  = 0;
@@ -128,5 +180,5 @@ void checkFirstTime() {
 #ifdef CYCLETIME_FIXATED
   conf.cycletime_fixated = CYCLETIME_FIXATED;
 #endif
-  writeParams(0); // this will also (p)reset checkNewConf with the current version number again.
+  writeParams(0); // this will also (p)reset conf version with the current version number again.
 }

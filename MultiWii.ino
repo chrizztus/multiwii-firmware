@@ -294,8 +294,11 @@ static int16_t motor[NUMBER_MOTOR];
 // EEPROM Layout definition
 // ************************
 static uint8_t dynP8[3], dynD8[3];
-static struct {
-  uint8_t checkNewConf;
+static struct __eeprom_conf {
+  uint8_t version;
+  uint8_t size;
+  /* magic number, should be 0xBE */
+  uint8_t magic_be;
   uint8_t P8[PIDITEMS], I8[PIDITEMS], D8[PIDITEMS];
   uint8_t rcRate8;
   uint8_t rcExpo8;
@@ -342,6 +345,10 @@ static struct {
   #ifdef CYCLETIME_FIXATED
     uint16_t cycletime_fixated;
   #endif
+  /* magic number, should be 0xEF */
+  uint8_t magic_ef;
+  /* XOR checksum */
+  uint8_t chk;
 } conf;
 
 
