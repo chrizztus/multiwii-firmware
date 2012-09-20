@@ -276,6 +276,7 @@ void evaluateCommand() {
                  #endif
                  #if defined(LED_FLASHER)
                    rcOptions[BOXLEDMAX]<<BOXLEDMAX|
+                   rcOptions[BOXLEDLOW]<<BOXLEDLOW|
                  #endif
                  #if defined(LANDING_LIGHTS_DDR)
                    rcOptions[BOXLLIGHTS]<<BOXLLIGHTS |
