@@ -106,33 +106,24 @@ void resetConf(struct __eeprom_conf *cf) {
   memset(cf, 0, sizeof(*cf));
   cf->P8[ROLL]  = 40;  cf->I8[ROLL] = 30; cf->D8[ROLL]  = 23;
   cf->P8[PITCH] = 40; cf->I8[PITCH] = 30; cf->D8[PITCH] = 23;
-  cf->P8[YAW]   = 85;  cf->I8[YAW]  = 45;  cf->D8[YAW]  = 0;
+  cf->P8[YAW]   = 85;  cf->I8[YAW]  = 45;
   cf->P8[PIDALT]   = 16; cf->I8[PIDALT]   = 15; cf->D8[PIDALT]   = 7;
   
-  cf->P8[PIDPOS]  = POSHOLD_P * 100;     cf->I8[PIDPOS]    = POSHOLD_I * 100;       cf->D8[PIDPOS]    = 0;
+  cf->P8[PIDPOS]  = POSHOLD_P * 100;     cf->I8[PIDPOS]    = POSHOLD_I * 100;
   cf->P8[PIDPOSR] = POSHOLD_RATE_P * 10; cf->I8[PIDPOSR]   = POSHOLD_RATE_I * 100;  cf->D8[PIDPOSR]   = POSHOLD_RATE_D * 1000;
   cf->P8[PIDNAVR] = NAV_P * 10;          cf->I8[PIDNAVR]   = NAV_I * 100;           cf->D8[PIDNAVR]   = NAV_D * 1000;
 
   cf->P8[PIDLEVEL] = 70; cf->I8[PIDLEVEL] = 10; cf->D8[PIDLEVEL] = 100;
   cf->P8[PIDMAG] = 40;
   
-  cf->P8[PIDVEL] = 0;  cf->I8[PIDVEL] = 0;  cf->D8[PIDVEL] = 0;
-  
   cf->rcRate8 = 90; cf->rcExpo8 = 65;
-  cf->rollPitchRate = 0;
-  cf->yawRate = 0;
-  cf->dynThrPID = 0;
-  cf->thrMid8 = 50; cf->thrExpo8 = 0;
-  for(uint8_t i=0;i<CHECKBOXITEMS;i++) {cf->activate[i] = 0;}
-  cf->angleTrim[0] = 0; cf->angleTrim[1] = 0;
-  cf->powerTrigger1 = 0;
+  cf->thrMid8 = 50;
   #ifdef FLYING_WING
     cf->wing_left_mid  = WING_LEFT_MID; 
     cf->wing_right_mid = WING_RIGHT_MID; 
   #endif
   #ifdef FIXEDWING
     cf->dynThrPID = 50;
-    cf->rcExpo8   =  0;
   #endif
   #ifdef TRI
     cf->tri_yaw_middle = TRI_YAW_MIDDLE;
