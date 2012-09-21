@@ -653,7 +653,6 @@ void setup() {
   POWERPIN_OFF;
   initOutput();
   readEEPROM();
-  checkFirstTime();
   configureReceiver();
   #if defined(OPENLRSv2MULTI)
     initOpenLRS();

@@ -413,7 +413,7 @@ void evaluateCommand() {
    #endif
    case MSP_RESET_CONF:
      if(!f.ARMED) {
-       resetConf();
+       resetConf(&conf);
      }
      headSerialReply(0);
      break;
