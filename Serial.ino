@@ -62,7 +62,7 @@ static uint8_t inBuf[INBUF_SIZE][UART_NUMBER];
 #define MSP_SET_MISC             207   //in message          powermeter trig + 8 free for future use
 #define MSP_RESET_CONF           208   //in message          no param
 #define MSP_WP_SET               209   //in message          sets a given WP (WP#,lat, lon, alt, flags)
-#define MSP_SET_AUX              210   //in message          set configuration of AUX channels and boxitems
+#define MSP_SET_AUX              220   //in message          set configuration of AUX channels and boxitems
 
 #define MSP_EEPROM_WRITE         250   //in message          no param
 
