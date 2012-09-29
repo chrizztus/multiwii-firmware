@@ -157,7 +157,7 @@ static int16_t nav_takeoff_bearing;
     while(str && (b = pgm_read_byte(str++))) {
       SerialWrite(GPS_SERIAL, b); 
       #if defined(UBLOX)
-        delay(4);
+        delay(5);
       #endif      
     }
   }
@@ -199,10 +199,11 @@ static int16_t nav_takeoff_bearing;
         #endif  
         while(!SerialTXfree(GPS_SERIAL)) delay(10);
       }
+      delayms(200);
       SerialOpen(GPS_SERIAL,GPS_BAUD);  
       for(uint8_t i=0; i<sizeof(UBLOX_INIT); i++) {                        // send configuration data in UBX protocol
         SerialWrite(GPS_SERIAL, pgm_read_byte(UBLOX_INIT+i));
-        delay(4); //simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+        delay(5); //simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
       }
     #elif defined(INIT_MTK_GPS)                              // MTK GPS setup
       for(uint8_t i=0;i<5;i++){
@@ -219,7 +220,7 @@ static int16_t nav_takeoff_bearing;
         #if (GPS_BAUD==115200)
           SerialGpsPrint(PSTR("$PMTK251,115200*1F\r\n"));    // 115200 baud
         #endif  
-        while(!SerialTXfree(GPS_SERIAL)) delay(10);
+        while(!SerialTXfree(GPS_SERIAL)) delay(80);
       }
       // at this point we have GPS working at selected (via #define GPS_BAUD) baudrate
       SerialOpen(GPS_SERIAL,GPS_BAUD);
@@ -232,6 +233,7 @@ static int16_t nav_takeoff_bearing;
 void GPS_NewData() {
   uint8_t axis;
   #if defined(I2C_GPS)
+    static uint8_t GPS_pids_initialized;
     static uint8_t _i2c_gps_status;
   
     //Do not use i2c_writereg, since writing a register does not work if an i2c_stop command is issued at the end
@@ -251,6 +253,11 @@ void GPS_NewData() {
        }
        if (_i2c_gps_status & I2C_GPS_STATUS_NEW_DATA) {                               //Check about new data
           if (GPS_update) { GPS_update = 0;} else { GPS_update = 1;}                  //Fancy flash on GUI :D
+          if (!GPS_pids_initialized) {
+            GPS_set_pids();
+            GPS_pids_initialized = 1;
+          } 
+          
           //Read GPS data for distance, heading and gps position 
 
           i2c_rep_start(I2C_GPS_ADDRESS<<1);
@@ -687,7 +694,8 @@ static void GPS_calc_poshold() {
   uint8_t axis;
   
   for (axis=0;axis<2;axis++) {
-    target_speed = get_P(error[axis], &posholdPID_PARAM); // calculate desired speed from lon error
+    target_speed = get_P(error[axis], &posholdPID_PARAM); // calculate desired speed from lat/lon error
+    target_speed = constrain(target_speed,-100,100);
     rate_error[axis] = target_speed - actual_speed[axis]; // calc the speed error
 
     nav[axis]      =
@@ -971,17 +979,6 @@ bool GPS_newFrame(char c) {
     uint32_t horizontal_accuracy;
     uint32_t vertical_accuracy;
   };
-/*  
-  struct ubx_nav_status {
-    uint32_t time;  // GPS msToW
-    uint8_t fix_type;
-    uint8_t fix_status;
-    uint8_t differential_status;
-    uint8_t res;
-    uint32_t time_to_first_fix;
-    uint32_t uptime;  // milliseconds
-   };
-*/   
   struct ubx_nav_solution {
     uint32_t time;
     int32_t time_nsec;

@@ -294,6 +294,15 @@ static int16_t motor[NUMBER_MOTOR];
 // EEPROM Layout definition
 // ************************
 static uint8_t dynP8[3], dynD8[3];
+
+static struct {
+  uint8_t currentSet;
+  int16_t accZero[3];
+  int16_t magZero[3];
+  uint8_t checksum;      // MUST BE ON LAST POSITION OF STRUCTURE ! 
+} global_conf;
+
+
 static struct {
   uint8_t checkNewConf;
   uint8_t P8[PIDITEMS], I8[PIDITEMS], D8[PIDITEMS];
@@ -304,8 +313,6 @@ static struct {
   uint8_t dynThrPID;
   uint8_t thrMid8;
   uint8_t thrExpo8;
-  int16_t accZero[3];
-  int16_t magZero[3];
   int16_t angleTrim[2];
   uint16_t activate[CHECKBOXITEMS];
   uint8_t powerTrigger1;
@@ -323,7 +330,7 @@ static struct {
     uint8_t Smoothing[3];
   #endif
   #if defined (FAILSAFE)
-    int16_t failsave_throttle;
+    int16_t failsafe_throttle;
   #endif
   #ifdef VBAT
     uint8_t vbatscale;
@@ -342,6 +349,7 @@ static struct {
   #ifdef CYCLETIME_FIXATED
     uint16_t cycletime_fixated;
   #endif
+  uint8_t  checksum;      // MUST BE ON LAST POSITION OF CONF STRUCTURE ! 
 } conf;
 
 
@@ -645,8 +653,12 @@ void setup() {
   STABLEPIN_PINMODE;
   POWERPIN_OFF;
   initOutput();
-  readEEPROM();
-  checkFirstTime();
+  for(global_conf.currentSet=0; global_conf.currentSet<3; global_conf.currentSet++) {  // check all settings integrity
+    readEEPROM();
+  }
+  readGlobalSet();
+  readEEPROM();                                    // load current setting data
+  blinkLED(2,40,global_conf.currentSet+1);          
   configureReceiver();
   #if defined(OPENLRSv2MULTI)
     initOpenLRS();
@@ -756,16 +768,16 @@ void loop () {
     #endif
     // Failsafe routine - added by MIS
     #if defined(FAILSAFE)
-      if ( failsafeCnt > (5*FAILSAVE_DELAY) && f.ARMED) {                  // Stabilize, and set Throttle to specified level
+      if ( failsafeCnt > (5*FAILSAFE_DELAY) && f.ARMED) {                  // Stabilize, and set Throttle to specified level
         for(i=0; i<3; i++) rcData[i] = MIDRC;                               // after specified guard time after RC signal is lost (in 0.1sec)
-        rcData[THROTTLE] = conf.failsave_throttle;
-        if (failsafeCnt > 5*(FAILSAVE_DELAY+FAILSAVE_OFF_DELAY)) {          // Turn OFF motors after specified Time (in 0.1sec)
+        rcData[THROTTLE] = conf.failsafe_throttle;
+        if (failsafeCnt > 5*(FAILSAFE_DELAY+FAILSAFE_OFF_DELAY)) {          // Turn OFF motors after specified Time (in 0.1sec)
           f.ARMED = 0;   // This will prevent the copter to automatically rearm if failsafe shuts it down and prevents
           f.OK_TO_ARM = 0; // to restart accidentely by just reconnect to the tx - you will have to switch off first to rearm
         }
         failsafeEvents++;
       }
-      if ( failsafeCnt > (5*FAILSAVE_DELAY) && !f.ARMED) {  //Turn of "Ok To arm to prevent the motors from spinning after repowering the RX with low throttle and aux to arm
+      if ( failsafeCnt > (5*FAILSAFE_DELAY) && !f.ARMED) {  //Turn of "Ok To arm to prevent the motors from spinning after repowering the RX with low throttle and aux to arm
           f.ARMED = 0;   // This will prevent the copter to automatically rearm if failsafe shuts it down and prevents
           f.OK_TO_ARM = 0; // to restart accidentely by just reconnect to the tx - you will have to switch off first to rearm
       }
@@ -776,12 +788,22 @@ void loop () {
       errorGyroI[ROLL] = 0; errorGyroI[PITCH] = 0; errorGyroI[YAW] = 0;
       errorAngleI[ROLL] = 0; errorAngleI[PITCH] = 0;
       rcDelayCommand++;
-      if (rcData[YAW] < MINCHECK && rcData[PITCH] < MINCHECK && !f.ARMED) {
-        if (rcDelayCommand == 20) {
+      if (rcData[YAW] < MINCHECK && !f.ARMED) {                                             // THTOTTLE min, YAW left
+        if(rcData[PITCH] < MINCHECK && rcDelayCommand == 20) {                              // PITCH down -> GYRO cal
           calibratingG=400;
           #if GPS 
             GPS_reset_home_position();
           #endif
+        }
+        i = 0;
+        if(rcData[ROLL]  < MINCHECK && rcData[PITCH] > 1300 && rcData[PITCH] < 1700) i=1;    // ROLL left  -> SET 1
+        if(rcData[PITCH] > MAXCHECK && rcData[ROLL]  > 1300 && rcData[ROLL]  < 1700) i=2;    // PITCH up   -> SET 2
+        if(rcData[ROLL]  > MAXCHECK && rcData[PITCH] > 1300 && rcData[PITCH] < 1700) i=3;    // ROLL right -> SET 3
+        if(i && rcDelayCommand == 20) {
+          global_conf.currentSet = i-1;
+          writeGlobalSet(0);
+          readEEPROM();
+          blinkLED(2,40,i);
         }
       } else if (rcData[YAW] > MAXCHECK && rcData[PITCH] > MAXCHECK && !f.ARMED) {
         if (rcDelayCommand == 20) {
@@ -931,9 +953,9 @@ void loop () {
     datenschlag_apply_fa_settings();
     #endif
 
-    // note: if FAILSAFE is disable, failsafeCnt > 5*FAILSAVE_DELAY is always false
+    // note: if FAILSAFE is disable, failsafeCnt > 5*FAILSAFE_DELAY is always false
     #if ACC
-      if ( rcOptions[BOXANGLE] || (failsafeCnt > 5*FAILSAVE_DELAY) ) { 
+      if ( rcOptions[BOXANGLE] || (failsafeCnt > 5*FAILSAFE_DELAY) ) { 
         // bumpless transfer to Level mode
         if (!f.ANGLE_MODE) {
           errorAngleI[ROLL] = 0; errorAngleI[PITCH] = 0;
@@ -1212,7 +1234,7 @@ void loop () {
       errorAngleI[axis]     = constrain(errorAngleI[axis]+errorAngle,-10000,+10000);    // WindUp     //16 bits is ok here
       ITermACC              = ((int32_t)errorAngleI[axis]*conf.I8[PIDLEVEL])>>12;            // 32 bits is needed for calculation:10000*I8 could exceed 32768   16 bits is ok for result
     }
-    if (!f.ANGLE_MODE || axis == 2 ) { // MODE relying on GYRO or YAW axis
+    if ( !f.ANGLE_MODE || f.HORIZON_MODE || axis == 2 ) { // MODE relying on GYRO or YAW axis
       if (abs(rcCommand[axis])<350) error =          rcCommand[axis]*10*8/conf.P8[axis] ; // 16 bits is needed for calculation: 350*10*8 = 28000      16 bits is ok for result if P8>2 (P>0.2)
                                else error = (int32_t)rcCommand[axis]*10*8/conf.P8[axis] ; // 32 bits is needed for calculation: 500*5*10*8 = 200000   16 bits is ok for result if P8>2 (P>0.2)
       error -= gyroData[axis];

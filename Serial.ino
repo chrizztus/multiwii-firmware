@@ -60,6 +60,9 @@ static uint8_t inBuf[INBUF_SIZE][UART_NUMBER];
 #define MSP_SET_MISC             207   //in message          powermeter trig + 8 free for future use
 #define MSP_RESET_CONF           208   //in message          no param
 #define MSP_WP_SET               209   //in message          sets a given WP (WP#,lat, lon, alt, flags)
+#define MSP_SELECT_SETTING       210   //in message          Select Setting Number (0-2)
+
+#define MSP_SPEK_BIND            240   //in message          no param
 
 #define MSP_EEPROM_WRITE         250   //in message          no param
 
@@ -236,6 +239,15 @@ void evaluateCommand() {
      #endif
      headSerialReply(0);
      break;
+   case MSP_SELECT_SETTING:
+     if(!f.ARMED) {
+       global_conf.currentSet = read8();
+       if(global_conf.currentSet>2) global_conf.currentSet = 0;
+       writeGlobalSet(0);
+       readEEPROM();
+     }
+     headSerialReply(0);
+     break;
    case MSP_IDENT:
      headSerialReply(7);
      serialize8(VERSION);   // multiwii version
@@ -282,6 +294,7 @@ void evaluateCommand() {
                    rcOptions[BOXLLIGHTS]<<BOXLLIGHTS |
                  #endif
                  f.ARMED<<BOXARM);
+//       serialize8(global_conf.currentSet);   // current setting
      break;
    case MSP_RAW_IMU:
      headSerialReply(18);
@@ -346,7 +359,8 @@ void evaluateCommand() {
    case MSP_BAT:
      headSerialReply(3);
      serialize8(vbat);
-     serialize16(intPowerMeterSum);
+//     serialize16(intPowerMeterSum);
+     serialize16(global_conf.currentSet+1);   // current setting - until GUI adapt
      break;
    case MSP_RC_TUNING:
      headSerialReply(7);
@@ -413,10 +427,7 @@ void evaluateCommand() {
      break;  
    #endif
    case MSP_RESET_CONF:
-     if(!f.ARMED) {
-       conf.checkNewConf++;
-       checkFirstTime();
-     }
+     if(!f.ARMED) LoadDefaults();
      headSerialReply(0);
      break;
    case MSP_ACC_CALIBRATION:
@@ -427,6 +438,12 @@ void evaluateCommand() {
      if(!f.ARMED) f.CALIBRATE_MAG = 1;
      headSerialReply(0);
      break;
+ #if defined(SPEKTRUM)
+   case MSP_SPEK_BIND:
+     spekBind();  
+     headSerialReply(0);
+     break;
+#endif
    case MSP_EEPROM_WRITE:
      writeParams(0);
      headSerialReply(0);
