@@ -339,7 +339,7 @@ void blinkLED(uint8_t num, uint8_t ontime,uint8_t repeat) {
   void init_led_flasher() {
     #if defined(LED_FLASHER_DDR)
     LED_FLASHER_DDR |= (1<<LED_FLASHER_BIT);
-    LED_FLASHER_PORT &= ~(1<<LED_FLASHER_BIT);
+    switch_led_flasher(0);
     #endif
   }
   
