@@ -965,7 +965,7 @@ void loop () {
         // failsafe support
         f.ANGLE_MODE = 0;
       }
-      if ( rcOptions[BOXHORIZON] ) { 
+      if ( rcOptions[BOXHORIZON] && ! f.ANGLE_MODE) {
         if (!f.HORIZON_MODE) {
           errorAngleI[ROLL] = 0; errorAngleI[PITCH] = 0;
           f.HORIZON_MODE = 1;
