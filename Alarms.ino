@@ -463,7 +463,7 @@ void blinkLED(uint8_t num, uint8_t ontime,uint8_t repeat) {
   void init_led_flasher() {
     #if defined(LED_FLASHER_DDR)
     LED_FLASHER_DDR |= (1<<LED_FLASHER_BIT);
-    LED_FLASHER_PORT &= ~(1<<LED_FLASHER_BIT);
+    switch_led_flasher(0);
     #endif
   }
   
@@ -536,6 +536,7 @@ void blinkLED(uint8_t num, uint8_t ontime,uint8_t repeat) {
   #if defined(LANDING_LIGHTS_DDR)
   void init_landing_lights(void) {
     LANDING_LIGHTS_DDR |= 1<<LANDING_LIGHTS_BIT;
+    switch_landing_lights(0);
   }
   
   void inline switch_landing_lights(uint8_t on) {
