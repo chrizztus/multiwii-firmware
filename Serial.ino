@@ -201,6 +201,16 @@ void serialCom() {
   }
 }
 
+static void setBoxitem(uint8_t item, uint8_t channel, uint8_t state, uint8_t on) {
+  uint16_t bnum = item*(AUX_CHANNELS*3) + channel*3 + state;
+  uint8_t *field = &conf.activate[ bnum/8 ];
+  if (on) {
+    *field |= 1<<(bnum%8);
+  } else {
+    *field &= ~(1<<(bnum%8));
+  }
+}
+
 void evaluateCommand() {
   switch(cmdMSP[CURRENTPORT]) {
    case MSP_SET_RAW_RC:
@@ -229,12 +239,37 @@ void evaluateCommand() {
      }
      headSerialReply(0);
      break;
+
+   #if (AUX_CHANNELS == 4) && defined(AUX_SERIAL_COMPAT) // we cannot check for AUX_STEPS == 3 here :(
+   // traditional way of setting box items, superseded by MSP_SET_AUX
+   case MSP_SET_BOX:
+     // we cannot handle non-traditional numbers here
+     if (AUX_CHANNELS == 4 && AUX_STEPS == 3) {
+       // clear current settings
+       memset(&conf.activate, 0, sizeof(conf.activate));
+       for(uint8_t i=0;i<CHECKBOXITEMS;i++) {
+         uint16_t act_i = read16();
+         // now flip the appropiate bits
+         for(uint8_t c=0;c<AUX_CHANNELS;c++) {
+           for (uint8_t s=0; s<AUX_STEPS; s++) {
+             setBoxitem(i, c, s, (act_i & 1<<(c*AUX_STEPS + s)));
+           }
+         }
+       }
+     } else {
+       // indicate that we cannot handle this instruction
+       goto MSP_ERR_DEFAULT;
+     }
+     break;
+   #endif
+
    case MSP_SET_AUX:
      for(uint8_t i=0;i<sizeof(conf.activate);i++) {
        conf.activate[i]=read8();
      }
      headSerialReply(0);
      break;
+
    case MSP_SET_RC_TUNING:
      conf.rcRate8 = read8();
      conf.rcExpo8 = read8();
@@ -384,6 +419,31 @@ void evaluateCommand() {
        serialize8(conf.D8[i]);
      }
      break;
+
+   #if (AUX_CHANNELS == 4) && defined(AUX_SERIAL_COMPAT) // we cannot check for AUX_STEPS == 3 here :(
+   case MSP_BOX:
+     // we cannot handle non-traditional numbers here
+     if (AUX_CHANNELS == 4 && AUX_STEPS == 3) {
+       headSerialReply(CHECKBOXITEMS*2);
+       for(uint8_t i=0;i<CHECKBOXITEMS;i++) {
+         uint16_t act_i = 0;
+         // now flip the appropiate bits
+         for(uint8_t c=0;c<AUX_CHANNELS;c++) {
+           for (uint8_t s=0; s<AUX_STEPS; s++) {
+             if (activated(i, c, s)) {
+               act_i |= (1<<(c*AUX_STEPS + s));
+             }
+           }
+         }
+         serialize16(act_i);
+       }
+     } else {
+       // indicate that we cannot handle this instruction
+       goto MSP_ERR_DEFAULT;
+     }
+     break;
+   #endif
+
    case MSP_AUX:
      headSerialReply(sizeof(conf.activate));
      for(uint8_t i=0;i<sizeof(conf.activate);i++) {
@@ -486,6 +546,7 @@ void evaluateCommand() {
      break;
    #endif
    default:  // we do not know how to handle the (valid) message, indicate error MSP $M!
+   MSP_ERR_DEFAULT:
      headSerialError(0);
      break;
   }
