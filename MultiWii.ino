@@ -613,7 +613,12 @@ void setup() {
   STABLEPIN_PINMODE;
   POWERPIN_OFF;
   initOutput();
+  #ifdef MULTIPLE_CONFIGURATION_PROFILES
   for(global_conf.currentSet=0; global_conf.currentSet<3; global_conf.currentSet++) {  // check all settings integrity
+  #else
+  {
+    global_conf.currentSet=0;
+  #endif
     readEEPROM();
   }
   readGlobalSet();
@@ -801,6 +806,7 @@ void loop () {
             }
          } 
         #endif
+        #ifdef MULTIPLE_CONFIGURATION_PROFILES
         if      (rcSticks == THR_LO + YAW_LO + PIT_CE + ROL_LO) i=1;    // ROLL left  -> Profile 1
         else if (rcSticks == THR_LO + YAW_LO + PIT_HI + ROL_CE) i=2;    // PITCH up   -> Profile 2
         else if (rcSticks == THR_LO + YAW_LO + PIT_CE + ROL_HI) i=3;    // ROLL right -> Profile 3
@@ -811,6 +817,7 @@ void loop () {
           blinkLED(2,40,i);
           alarmArray[0] = i;
         }
+        #endif
         if (rcSticks == THR_LO + YAW_HI + PIT_HI + ROL_CE) {            // Enter LCD config
           #ifdef TRI
             servo[5] = 1500; // we center the yaw servo in conf mode

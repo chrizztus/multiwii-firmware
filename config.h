@@ -864,6 +864,9 @@
 /*****************                                                                 ***************/
 /*************************************************************************************************/
 
+  /************       Support multiple configuration profile in EEPROM        **********/
+    //#define MULTIPLE_CONFIGURATION_PROFILES
+
   /************ EXperimental: force a stable, fixated (high) cycle time       **********/
     /* when activated, the displayed cycle time in GUI will not be correct.
      * Tunable via LCD config menu.
